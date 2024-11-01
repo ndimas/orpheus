@@ -337,10 +337,8 @@ class DrumMachine {
 
     setupEventListeners() {
         document.querySelector('.play').addEventListener('click', () => this.togglePlay());
-        document.querySelector('.loop').addEventListener('click', () => this.toggleLoop());
-        document.querySelector('.random').addEventListener('click', () => this.randomize());
-        document.querySelector('.reverse').addEventListener('click', () => this.reverse());
         document.querySelector('.play-alt').addEventListener('click', () => this.togglePlay());
+        document.querySelector('.loop').addEventListener('click', () => this.toggleLoop());
     }
 
     togglePlay() {
