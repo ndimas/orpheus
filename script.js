@@ -1,34 +1,115 @@
 class DrumMachine {
     constructor() {
+        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
         this.tracks = 9;
         this.steps = 16;
         this.currentStep = 0;
         this.isPlaying = false;
         this.tempo = 120;
         this.grid = [];
-        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
         this.sounds = {};
+        this.nextNoteTime = 0;
+        this.scheduleAheadTime = 0.1;
+        this.lookahead = 25.0;
         
-        // Define drum sounds with their frequencies and types
+        this.drumTypes = [
+            'kick',
+            'snare',
+            'clap',
+            'hihatClosed',
+            'hihatOpen',
+            'tomHigh',
+            'tomLow',
+            'crash',
+            'ride'
+        ];
+
+        this.initializeGrid();
+        this.createStepIndicators();
+        this.setupEventListeners();
+
+        // Initialize audio context on user interaction
+        document.addEventListener('click', () => {
+            if (this.audioContext.state === 'suspended') {
+                this.audioContext.resume();
+            }
+        }, { once: true });
+
+        // Pre-compile noise buffer
+        this.noiseBuffer = this.createNoiseBuffer();
+
+        // Add page visibility handling
+        this.handleVisibilityChange = this.handleVisibilityChange.bind(this);
+        document.addEventListener('visibilitychange', this.handleVisibilityChange);
+
+        // Add drum definitions
         this.drumDefinitions = {
             'kick': {
                 setup: (context) => {
+                    // Main sub oscillator
                     const osc = context.createOscillator();
                     const gain = context.createGain();
-                    const filter = context.createBiquadFilter();
                     
-                    osc.frequency.setValueAtTime(150, context.currentTime);
-                    osc.frequency.exponentialRampToValueAtTime(0.01, context.currentTime + 0.5);
+                    // Click/attack oscillator
+                    const oscClick = context.createOscillator();
+                    const gainClick = context.createGain();
                     
-                    gain.gain.setValueAtTime(1, context.currentTime);
+                    // Body oscillator for mid frequencies
+                    const oscBody = context.createOscillator();
+                    const gainBody = context.createGain();
+                    
+                    // Compressor for glue and punch
+                    const compressor = context.createDynamicsCompressor();
+                    compressor.threshold.setValueAtTime(-24, context.currentTime);
+                    compressor.knee.setValueAtTime(12, context.currentTime);
+                    compressor.ratio.setValueAtTime(20, context.currentTime);
+                    compressor.attack.setValueAtTime(0.003, context.currentTime);
+                    compressor.release.setValueAtTime(0.25, context.currentTime);
+                    
+                    // Main sub frequencies (deeper)
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(55, context.currentTime); // Lower starting frequency
+                    osc.frequency.exponentialRampToValueAtTime(35, context.currentTime + 0.1);
+                    
+                    // Click for attack
+                    oscClick.type = 'square';
+                    oscClick.frequency.setValueAtTime(180, context.currentTime);
+                    oscClick.frequency.exponentialRampToValueAtTime(40, context.currentTime + 0.03);
+                    
+                    // Body tone
+                    oscBody.type = 'sine';
+                    oscBody.frequency.setValueAtTime(120, context.currentTime);
+                    oscBody.frequency.exponentialRampToValueAtTime(50, context.currentTime + 0.08);
+                    
+                    // Main gain envelope (sub)
+                    gain.gain.setValueAtTime(1.5, context.currentTime);
                     gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.5);
                     
-                    filter.type = 'lowpass';
-                    filter.frequency.setValueAtTime(3000, context.currentTime);
+                    // Click gain envelope
+                    gainClick.gain.setValueAtTime(0.5, context.currentTime);
+                    gainClick.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.05);
                     
-                    osc.connect(filter);
-                    filter.connect(gain);
-                    return { osc, gain };
+                    // Body gain envelope
+                    gainBody.gain.setValueAtTime(0.7, context.currentTime);
+                    gainBody.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.3);
+                    
+                    // Connect everything through the compressor
+                    osc.connect(gain);
+                    oscClick.connect(gainClick);
+                    oscBody.connect(gainBody);
+                    
+                    gain.connect(compressor);
+                    gainClick.connect(compressor);
+                    gainBody.connect(compressor);
+                    
+                    return { 
+                        osc: osc, 
+                        gain: compressor, // Use compressor as final output
+                        extraNodes: [
+                            { osc: oscClick, gain: gainClick },
+                            { osc: oscBody, gain: gainBody }
+                        ]
+                    };
                 }
             },
             'snare': {
@@ -37,24 +118,28 @@ class DrumMachine {
                     const noiseGain = context.createGain();
                     const filter = context.createBiquadFilter();
                     
-                    // Create noise
-                    const bufferSize = context.sampleRate * 0.2;
-                    const buffer = context.createBuffer(1, bufferSize, context.sampleRate);
-                    const data = buffer.getChannelData(0);
-                    for (let i = 0; i < bufferSize; i++) {
-                        data[i] = Math.random() * 2 - 1;
-                    }
-                    
-                    noise.buffer = buffer;
+                    noise.buffer = this.noiseBuffer;
                     noiseGain.gain.setValueAtTime(0.7, context.currentTime);
                     noiseGain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.2);
                     
                     filter.type = 'bandpass';
                     filter.frequency.value = 3000;
-                    filter.Q.value = 0.5;
                     
                     noise.connect(filter);
                     filter.connect(noiseGain);
+                    return { noise, gain: noiseGain };
+                }
+            },
+            'clap': {
+                setup: (context) => {
+                    const noise = context.createBufferSource();
+                    const noiseGain = context.createGain();
+                    
+                    noise.buffer = this.noiseBuffer;
+                    noiseGain.gain.setValueAtTime(0.8, context.currentTime);
+                    noiseGain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.1);
+                    
+                    noise.connect(noiseGain);
                     return { noise, gain: noiseGain };
                 }
             },
@@ -64,14 +149,7 @@ class DrumMachine {
                     const gain = context.createGain();
                     const filter = context.createBiquadFilter();
                     
-                    const bufferSize = context.sampleRate * 0.1;
-                    const buffer = context.createBuffer(1, bufferSize, context.sampleRate);
-                    const data = buffer.getChannelData(0);
-                    for (let i = 0; i < bufferSize; i++) {
-                        data[i] = Math.random() * 2 - 1;
-                    }
-                    
-                    noise.buffer = buffer;
+                    noise.buffer = this.noiseBuffer;
                     filter.type = 'highpass';
                     filter.frequency.value = 7000;
                     
@@ -83,46 +161,13 @@ class DrumMachine {
                     return { noise, gain };
                 }
             },
-            'clap': {
-                setup: (context) => {
-                    const noise = context.createBufferSource();
-                    const noiseGain = context.createGain();
-                    const filter = context.createBiquadFilter();
-                    
-                    const bufferSize = context.sampleRate * 0.1;
-                    const buffer = context.createBuffer(1, bufferSize, context.sampleRate);
-                    const data = buffer.getChannelData(0);
-                    for (let i = 0; i < bufferSize; i++) {
-                        data[i] = Math.random() * 2 - 1;
-                    }
-                    
-                    noise.buffer = buffer;
-                    noiseGain.gain.setValueAtTime(0.8, context.currentTime);
-                    noiseGain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.1);
-                    
-                    filter.type = 'bandpass';
-                    filter.frequency.value = 2000;
-                    filter.Q.value = 1.0;
-                    
-                    noise.connect(filter);
-                    filter.connect(noiseGain);
-                    return { noise, gain: noiseGain };
-                }
-            },
             'hihatOpen': {
                 setup: (context) => {
                     const noise = context.createBufferSource();
                     const gain = context.createGain();
                     const filter = context.createBiquadFilter();
                     
-                    const bufferSize = context.sampleRate * 0.3; // Longer duration
-                    const buffer = context.createBuffer(1, bufferSize, context.sampleRate);
-                    const data = buffer.getChannelData(0);
-                    for (let i = 0; i < bufferSize; i++) {
-                        data[i] = Math.random() * 2 - 1;
-                    }
-                    
-                    noise.buffer = buffer;
+                    noise.buffer = this.noiseBuffer;
                     filter.type = 'highpass';
                     filter.frequency.value = 7000;
                     
@@ -172,14 +217,7 @@ class DrumMachine {
                     const gain = context.createGain();
                     const filter = context.createBiquadFilter();
                     
-                    const bufferSize = context.sampleRate * 1.0; // Long duration
-                    const buffer = context.createBuffer(1, bufferSize, context.sampleRate);
-                    const data = buffer.getChannelData(0);
-                    for (let i = 0; i < bufferSize; i++) {
-                        data[i] = Math.random() * 2 - 1;
-                    }
-                    
-                    noise.buffer = buffer;
+                    noise.buffer = this.noiseBuffer;
                     filter.type = 'highpass';
                     filter.frequency.value = 5000;
                     
@@ -196,86 +234,100 @@ class DrumMachine {
                     const noise = context.createBufferSource();
                     const gain = context.createGain();
                     const filter = context.createBiquadFilter();
-                    const highpass = context.createBiquadFilter();
                     
-                    const bufferSize = context.sampleRate * 0.8;
-                    const buffer = context.createBuffer(1, bufferSize, context.sampleRate);
-                    const data = buffer.getChannelData(0);
-                    for (let i = 0; i < bufferSize; i++) {
-                        data[i] = Math.random() * 2 - 1;
-                    }
-                    
-                    noise.buffer = buffer;
+                    noise.buffer = this.noiseBuffer;
                     filter.type = 'bandpass';
                     filter.frequency.value = 8000;
-                    filter.Q.value = 1.0;
-                    
-                    highpass.type = 'highpass';
-                    highpass.frequency.value = 6000;
                     
                     gain.gain.setValueAtTime(0.3, context.currentTime);
                     gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.8);
                     
                     noise.connect(filter);
-                    filter.connect(highpass);
-                    highpass.connect(gain);
+                    filter.connect(gain);
                     return { noise, gain };
                 }
             }
         };
-
-        this.initializeGrid();
-        this.createStepIndicators();
-        this.setupEventListeners();
-
-        // Initialize audio context on user interaction
-        document.addEventListener('click', () => {
-            if (this.audioContext.state === 'suspended') {
-                this.audioContext.resume();
-            }
-        }, { once: true });
-
-        // Pre-compile noise buffer
-        this.noiseBuffer = this.createNoiseBuffer();
     }
 
-    playDrumSound(row) {
-        try {
-            const drumTypes = [
-                'kick',
-                'snare',
-                'clap',
-                'hihatClosed',
-                'hihatOpen',
-                'tomHigh',
-                'tomLow',
-                'crash',
-                'ride'
-            ];
+    handleVisibilityChange() {
+        if (document.hidden && this.isPlaying) {
+            try {
+                const stepsToSchedule = 32;
+                const secondsPerBeat = 60.0 / this.tempo;
+                const secondsPerStep = secondsPerBeat / 4;
+                const currentTime = this.audioContext.currentTime;
 
-            const drumType = drumTypes[row];
+                for (let i = 0; i < stepsToSchedule; i++) {
+                    const stepTime = this.nextNoteTime + (i * secondsPerStep);
+                    const step = (this.currentStep + i) % this.steps;
+                    
+                    for (let row = 0; row < this.tracks; row++) {
+                        const activeClass = `active-${this.drumTypes[row].replace(/([A-Z])/g, '-$1').toLowerCase()}`;
+                        if (this.grid[row][step].classList.contains(activeClass)) {
+                            this.playDrumSound(row, stepTime);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error in visibility change handler:', error);
+            }
+        }
+    }
+
+    playDrumSound(row, time = null) {
+        try {
+            const drumType = this.drumTypes[row];
             if (!drumType || !this.drumDefinitions[drumType]) return;
 
             const setup = this.drumDefinitions[drumType].setup(this.audioContext);
-            const currentTime = this.audioContext.currentTime;
+            const startTime = time || this.audioContext.currentTime;
             
-            // Connect to destination and start immediately
+            // Connect to destination
             if (setup.gain) {
                 setup.gain.connect(this.audioContext.destination);
+                // Reset gain envelope timing based on startTime
+                setup.gain.gain.cancelScheduledValues(startTime);
+                setup.gain.gain.setValueAtTime(1, startTime);
+                setup.gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.5);
             }
             if (setup.noiseGain) {
                 setup.noiseGain.connect(this.audioContext.destination);
+                setup.noiseGain.gain.cancelScheduledValues(startTime);
+                setup.noiseGain.gain.setValueAtTime(0.8, startTime);
+                setup.noiseGain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.5);
             }
 
-            // Start all sound sources
+            // Start and stop sounds
             if (setup.osc) {
-                setup.osc.start(currentTime);
-                setup.osc.stop(currentTime + 0.5);
+                setup.osc.start(startTime);
+                setup.osc.stop(startTime + 0.5);
             }
             if (setup.noise) {
-                setup.noise.start(currentTime);
-                setup.noise.stop(currentTime + 0.5);
+                setup.noise.start(startTime);
+                setup.noise.stop(startTime + 0.5);
             }
+            
+            // Handle extra nodes (for kick drum)
+            if (setup.extraNodes) {
+                setup.extraNodes.forEach(node => {
+                    if (node.osc) {
+                        node.osc.start(startTime);
+                        node.osc.stop(startTime + 0.5);
+                    }
+                });
+            }
+
+            // Clean up nodes
+            setTimeout(() => {
+                setup.gain?.disconnect();
+                setup.noiseGain?.disconnect();
+                if (setup.extraNodes) {
+                    setup.extraNodes.forEach(node => {
+                        node.gain?.disconnect();
+                    });
+                }
+            }, (startTime - this.audioContext.currentTime + 0.6) * 1000);
 
         } catch (error) {
             console.error('Error playing drum sound:', error);
@@ -325,11 +377,9 @@ class DrumMachine {
         
         const activeClass = `active-${drumTypes[row].replace(/([A-Z])/g, '-$1').toLowerCase()}`;
         
-        // If pad already has the active class, remove it (unclick)
         if (pad.classList.contains(activeClass)) {
             pad.classList.remove(activeClass);
         } else {
-            // Otherwise, add the active class and play the sound
             pad.classList.add(activeClass);
             this.playDrumSound(row);
         }
@@ -342,7 +392,6 @@ class DrumMachine {
     }
 
     togglePlay() {
-        // Resume audio context when play is clicked
         if (this.audioContext.state === 'suspended') {
             this.audioContext.resume();
         }
@@ -351,7 +400,8 @@ class DrumMachine {
         if (this.isPlaying) {
             document.querySelector('.play').textContent = 'Stop';
             document.querySelector('.play-alt').textContent = 'Stop';
-            this.currentStep = 0; // Reset step counter when starting
+            this.currentStep = 0;
+            this.nextNoteTime = this.audioContext.currentTime;
             this.play();
         } else {
             document.querySelector('.play').textContent = 'Play';
@@ -362,38 +412,30 @@ class DrumMachine {
     play() {
         if (!this.isPlaying) return;
 
-        if (this._timeoutId) {
-            clearTimeout(this._timeoutId);
-        }
+        const secondsPerBeat = 60.0 / this.tempo;
+        const secondsPerStep = secondsPerBeat / 4;
+        const scheduleAhead = document.hidden ? 2.0 : 0.1;
 
-        // Update step indicators
-        document.querySelectorAll('.step-indicator').forEach((indicator, index) => {
-            indicator.classList.toggle('active', index === this.currentStep);
-        });
-
-        // Updated to check for all instrument-specific active classes
-        const drumTypes = [
-            'kick',
-            'snare',
-            'clap',
-            'hihatClosed',
-            'hihatOpen',
-            'tomHigh',
-            'tomLow',
-            'crash',
-            'ride'
-        ];
-
-        // Trigger sounds for active pads in current step
-        for (let row = 0; row < this.tracks; row++) {
-            const activeClass = `active-${drumTypes[row].replace(/([A-Z])/g, '-$1').toLowerCase()}`;
-            if (this.grid[row][this.currentStep].classList.contains(activeClass)) {
-                this.playDrumSound(row);
+        while (this.nextNoteTime < this.audioContext.currentTime + scheduleAhead) {
+            if (!document.hidden) {
+                document.querySelectorAll('.step-indicator').forEach((indicator, index) => {
+                    indicator.classList.toggle('active', index === this.currentStep);
+                });
             }
+
+            for (let row = 0; row < this.tracks; row++) {
+                const activeClass = `active-${this.drumTypes[row].replace(/([A-Z])/g, '-$1').toLowerCase()}`;
+                if (this.grid[row][this.currentStep].classList.contains(activeClass)) {
+                    this.playDrumSound(row, this.nextNoteTime);
+                }
+            }
+
+            this.nextNoteTime += secondsPerStep;
+            this.currentStep = (this.currentStep + 1) % this.steps;
         }
 
-        this.currentStep = (this.currentStep + 1) % this.steps;
-        this._timeoutId = setTimeout(() => this.play(), (60000 / this.tempo) / 4);
+        const nextUpdateTime = document.hidden ? 1000 : 25;
+        this._timeoutId = setTimeout(() => this.play(), nextUpdateTime);
     }
 
     randomize() {
@@ -439,6 +481,14 @@ class DrumMachine {
             data[i] = Math.random() * 2 - 1;
         }
         return buffer;
+    }
+
+    // Clean up when the drum machine is destroyed
+    destroy() {
+        document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+        if (this._timeoutId) {
+            clearTimeout(this._timeoutId);
+        }
     }
 }
 
