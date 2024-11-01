@@ -86,7 +86,7 @@ button:hover {
 .grid-container {
     display: grid;
     grid-template-columns: repeat(16, 1fr);
-    grid-template-rows: repeat(10, 1fr);
+    grid-template-rows: repeat(9, 40px);
     gap: 5px;
     flex-grow: 1;
 }
@@ -94,7 +94,6 @@ button:hover {
 .pad {
     background-color: var(--button-bg);
     border-radius: 4px;
-    aspect-ratio: 1;
     cursor: pointer;
     transition: background-color 0.2s;
 }
@@ -146,43 +145,75 @@ button:hover {
 .pad.active-ride { background-color: var(--pad-ride); }
 
 @media (max-width: 768px) {
+    body {
+        align-items: flex-start;
+        min-height: 100vh;
+        margin: 0;
+        padding: 0;
+    }
+
     .drum-machine {
-        width: 95%;
+        width: 100%;
+        min-height: 100vh;
+        margin: 0;
         padding: 10px;
+        border-radius: 0;
+        box-shadow: none;
+        display: flex;
+        flex-direction: column;
     }
 
-    .view-controls {
-        display: none;
+    .sequencer {
+        flex: 1;
+        gap: 10px;
+        margin-bottom: 10px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
-    .grid-container {
-        grid-template-columns: repeat(6, 1fr);
-        gap: 8px;
-    }
-
-    button {
-        padding: 12px 24px;
-        font-size: 16px;
+    .track-labels {
+        gap: 3px;
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        background-color: #222;
     }
 
     .track-label {
-        height: 50px;
+        height: 40px;
         font-size: 14px;
+        padding: 0 8px;
+        white-space: nowrap;
+        min-width: 120px;
     }
 
-    .step-indicator {
-        width: 12px;
-        height: 12px;
+    .grid-container {
+        grid-template-columns: repeat(16, 40px);
+        grid-template-rows: repeat(9, 40px);
+        gap: 3px;
+        min-width: min-content;
+    }
+
+    .pad {
+        width: 40px;
+        height: 40px;
+        border-radius: 4px;
     }
 
     .controls-bottom {
-        flex-direction: column;
-        gap: 15px;
+        position: sticky;
+        bottom: 0;
+        background-color: #222;
+        padding-top: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .grid-container {
+        grid-template-columns: repeat(4, 1fr);
     }
 
-    .transport-controls, .playback-controls {
-        width: 100%;
-        justify-content: center;
-        gap: 15px;
+    .track-label {
+        font-size: 10px;
     }
 } 

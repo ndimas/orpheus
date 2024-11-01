@@ -60,38 +60,38 @@ class DrumMachine {
                     
                     // Compressor for glue and punch
                     const compressor = context.createDynamicsCompressor();
-                    compressor.threshold.setValueAtTime(-24, context.currentTime);
-                    compressor.knee.setValueAtTime(12, context.currentTime);
-                    compressor.ratio.setValueAtTime(20, context.currentTime);
-                    compressor.attack.setValueAtTime(0.003, context.currentTime);
-                    compressor.release.setValueAtTime(0.25, context.currentTime);
+                    compressor.threshold.setValueAtTime(-12, context.currentTime);
+                    compressor.knee.setValueAtTime(6, context.currentTime);
+                    compressor.ratio.setValueAtTime(4, context.currentTime);
+                    compressor.attack.setValueAtTime(0.001, context.currentTime);
+                    compressor.release.setValueAtTime(0.1, context.currentTime);
                     
-                    // Main sub frequencies (deeper)
+                    // Main sub frequencies
                     osc.type = 'sine';
-                    osc.frequency.setValueAtTime(55, context.currentTime); // Lower starting frequency
-                    osc.frequency.exponentialRampToValueAtTime(35, context.currentTime + 0.1);
+                    osc.frequency.setValueAtTime(60, context.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(30, context.currentTime + 0.2);
                     
                     // Click for attack
-                    oscClick.type = 'square';
-                    oscClick.frequency.setValueAtTime(180, context.currentTime);
-                    oscClick.frequency.exponentialRampToValueAtTime(40, context.currentTime + 0.03);
+                    oscClick.type = 'triangle';
+                    oscClick.frequency.setValueAtTime(200, context.currentTime);
+                    oscClick.frequency.exponentialRampToValueAtTime(40, context.currentTime + 0.02);
                     
                     // Body tone
                     oscBody.type = 'sine';
                     oscBody.frequency.setValueAtTime(120, context.currentTime);
-                    oscBody.frequency.exponentialRampToValueAtTime(50, context.currentTime + 0.08);
+                    oscBody.frequency.exponentialRampToValueAtTime(50, context.currentTime + 0.1);
                     
                     // Main gain envelope (sub)
-                    gain.gain.setValueAtTime(1.5, context.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.5);
+                    gain.gain.setValueAtTime(2.0, context.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.4);
                     
                     // Click gain envelope
-                    gainClick.gain.setValueAtTime(0.5, context.currentTime);
+                    gainClick.gain.setValueAtTime(1.0, context.currentTime);
                     gainClick.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.05);
                     
                     // Body gain envelope
-                    gainBody.gain.setValueAtTime(0.7, context.currentTime);
-                    gainBody.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.3);
+                    gainBody.gain.setValueAtTime(1.0, context.currentTime);
+                    gainBody.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.2);
                     
                     // Connect everything through the compressor
                     osc.connect(gain);
@@ -104,7 +104,7 @@ class DrumMachine {
                     
                     return { 
                         osc: osc, 
-                        gain: compressor, // Use compressor as final output
+                        gain: compressor,
                         extraNodes: [
                             { osc: oscClick, gain: gainClick },
                             { osc: oscBody, gain: gainBody }
@@ -234,16 +234,22 @@ class DrumMachine {
                     const noise = context.createBufferSource();
                     const gain = context.createGain();
                     const filter = context.createBiquadFilter();
+                    const highpass = context.createBiquadFilter();
                     
                     noise.buffer = this.noiseBuffer;
                     filter.type = 'bandpass';
                     filter.frequency.value = 8000;
+                    filter.Q.value = 1.0;
+                    
+                    highpass.type = 'highpass';
+                    highpass.frequency.value = 6000;
                     
                     gain.gain.setValueAtTime(0.3, context.currentTime);
                     gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.8);
                     
                     noise.connect(filter);
-                    filter.connect(gain);
+                    filter.connect(highpass);
+                    highpass.connect(gain);
                     return { noise, gain };
                 }
             }
@@ -286,10 +292,13 @@ class DrumMachine {
             // Connect to destination
             if (setup.gain) {
                 setup.gain.connect(this.audioContext.destination);
-                // Reset gain envelope timing based on startTime
-                setup.gain.gain.cancelScheduledValues(startTime);
-                setup.gain.gain.setValueAtTime(1, startTime);
-                setup.gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.5);
+                
+                // Only set gain envelope if it's not the kick drum
+                if (drumType !== 'kick') {
+                    setup.gain.gain.cancelScheduledValues(startTime);
+                    setup.gain.gain.setValueAtTime(1, startTime);
+                    setup.gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.5);
+                }
             }
             if (setup.noiseGain) {
                 setup.noiseGain.connect(this.audioContext.destination);
@@ -354,7 +363,7 @@ class DrumMachine {
 
     createStepIndicators() {
         const indicatorContainer = document.querySelector('.step-indicators');
-        for (let i = 0; i < 16; i++) {
+        for (let i = 0; i < this.steps; i++) {
             const indicator = document.createElement('div');
             indicator.className = 'step-indicator';
             indicatorContainer.appendChild(indicator);
@@ -363,19 +372,7 @@ class DrumMachine {
 
     togglePad(pad) {
         const row = parseInt(pad.dataset.row);
-        const drumTypes = [
-            'kick',
-            'snare',
-            'clap',
-            'hihatClosed',
-            'hihatOpen',
-            'tomHigh',
-            'tomLow',
-            'crash',
-            'ride'
-        ];
-        
-        const activeClass = `active-${drumTypes[row].replace(/([A-Z])/g, '-$1').toLowerCase()}`;
+        const activeClass = `active-${this.drumTypes[row].replace(/([A-Z])/g, '-$1').toLowerCase()}`;
         
         if (pad.classList.contains(activeClass)) {
             pad.classList.remove(activeClass);
@@ -439,24 +436,12 @@ class DrumMachine {
     }
 
     randomize() {
-        const drumTypes = [
-            'kick',
-            'snare',
-            'clap',
-            'hihatClosed',
-            'hihatOpen',
-            'tomHigh',
-            'tomLow',
-            'crash',
-            'ride'
-        ];
-
         for (let row = 0; row < this.tracks; row++) {
             for (let col = 0; col < this.steps; col++) {
                 const pad = this.grid[row][col];
                 pad.className = 'pad';
                 if (Math.random() > 0.8) {
-                    const activeClass = `active-${drumTypes[row].replace(/([A-Z])/g, '-$1').toLowerCase()}`;
+                    const activeClass = `active-${this.drumTypes[row].replace(/([A-Z])/g, '-$1').toLowerCase()}`;
                     pad.classList.add(activeClass);
                 }
             }
