@@ -1,0 +1,188 @@
+:root {
+    --pad-kick: #7FDBFF;      /* Blue for kick */
+    --pad-snare: #2ECC40;     /* Green for snare */
+    --pad-clap: #FF851B;      /* Orange for clap */
+    --pad-hihat-closed: #39CCCC; /* Cyan for closed hihat */
+    --pad-hihat-open: #01FF70;   /* Lime for open hihat */
+    --pad-tom-high: #3D9970;   /* Olive for high tom */
+    --pad-tom-low: #2ECC40;    /* Green for low tom */
+    --pad-crash: #7FDBFF;     /* Blue for crash */
+    --pad-ride: #B10DC9;      /* Purple for ride */
+    --background: #1a1a1a;
+    --button-bg: #333;
+    --text-color: #fff;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--background);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: Arial, sans-serif;
+    color: var(--text-color);
+}
+
+.drum-machine {
+    background-color: #222;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    width: 90%;
+    max-width: 1000px;
+}
+
+.controls-top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.view-controls {
+    display: flex;
+    gap: 10px;
+}
+
+button {
+    background-color: var(--button-bg);
+    color: var(--text-color);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #444;
+}
+
+.sequencer {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.track-labels {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.track-label {
+    height: 40px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    background-color: var(--button-bg);
+    border-radius: 4px;
+}
+
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(16, 1fr);
+    grid-template-rows: repeat(10, 1fr);
+    gap: 5px;
+    flex-grow: 1;
+}
+
+.pad {
+    background-color: var(--button-bg);
+    border-radius: 4px;
+    aspect-ratio: 1;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.pad.active-blue {
+    background-color: var(--pad-active-blue);
+}
+
+.pad.active-green {
+    background-color: var(--pad-active-green);
+}
+
+.controls-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.transport-controls, .playback-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.step-indicators {
+    display: flex;
+    gap: 2px;
+}
+
+.step-indicator {
+    width: 8px;
+    height: 8px;
+    background-color: var(--button-bg);
+    border-radius: 50%;
+}
+
+.step-indicator.active {
+    background-color: #ff4136;
+}
+
+.pad.active-kick { background-color: var(--pad-kick); }
+.pad.active-snare { background-color: var(--pad-snare); }
+.pad.active-clap { background-color: var(--pad-clap); }
+.pad.active-hihat-closed { background-color: var(--pad-hihat-closed); }
+.pad.active-hihat-open { background-color: var(--pad-hihat-open); }
+.pad.active-tom-high { background-color: var(--pad-tom-high); }
+.pad.active-tom-low { background-color: var(--pad-tom-low); }
+.pad.active-crash { background-color: var(--pad-crash); }
+.pad.active-ride { background-color: var(--pad-ride); }
+
+@media (max-width: 768px) {
+    .drum-machine {
+        width: 95%;
+        padding: 10px;
+    }
+
+    .view-controls {
+        display: none;
+    }
+
+    .grid-container {
+        grid-template-columns: repeat(6, 1fr);
+        gap: 8px;
+    }
+
+    button {
+        padding: 12px 24px;
+        font-size: 16px;
+    }
+
+    .track-label {
+        height: 50px;
+        font-size: 14px;
+    }
+
+    .step-indicator {
+        width: 12px;
+        height: 12px;
+    }
+
+    .controls-bottom {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .transport-controls, .playback-controls {
+        width: 100%;
+        justify-content: center;
+        gap: 15px;
+    }
+} 

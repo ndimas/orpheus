@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drum Machine</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="drum-machine">
+        <div class="controls-top">
+            <div class="transport">
+                <button class="back">←</button>
+                <button class="play">Play</button>
+                <div class="loading-icons">
+                    <div class="loader"></div>
+                    <div class="loader"></div>
+                </div>
+            </div>
+            <div class="view-controls">
+                <button class="pattern">Pattern</button>
+                <button class="connect">Connect</button>
+                <button class="grid">Grid</button>
+                <button class="record">Record</button>
+                <button class="save">Save</button>
+                <button class="play-alt">Play</button>
+            </div>
+        </div>
+
+        <div class="sequencer">
+            <div class="track-labels">
+                <div class="track-label">Kick</div>
+                <div class="track-label">Snare</div>
+                <div class="track-label">Clap</div>
+                <div class="track-label">Hi-Hat Closed</div>
+                <div class="track-label">Hi-Hat Open</div>
+                <div class="track-label">Tom High</div>
+                <div class="track-label">Tom Low</div>
+                <div class="track-label">Crash</div>
+                <div class="track-label">Ride</div>
+            </div>
+            <div class="grid-container"></div>
+        </div>
+
+        <div class="controls-bottom">
+            <div class="transport-controls">
+                <button class="prev">←</button>
+                <div class="step-indicators"></div>
+                <button class="next">→</button>
+                <button class="loop">LOOP</button>
+            </div>
+            <div class="playback-controls">
+                <button class="prev-pattern">←</button>
+                <span class="pattern-number">0</span>
+                <button class="next-pattern">→</button>
+                <button class="accent">ACCENT</button>
+                <button class="random">RANDOM</button>
+                <button class="reverse">REVERSE</button>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html> 
