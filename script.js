@@ -340,6 +340,7 @@ class DrumMachine {
         document.querySelector('.loop').addEventListener('click', () => this.toggleLoop());
         document.querySelector('.random').addEventListener('click', () => this.randomize());
         document.querySelector('.reverse').addEventListener('click', () => this.reverse());
+        document.querySelector('.play-alt').addEventListener('click', () => this.togglePlay());
     }
 
     togglePlay() {
@@ -351,10 +352,12 @@ class DrumMachine {
         this.isPlaying = !this.isPlaying;
         if (this.isPlaying) {
             document.querySelector('.play').textContent = 'Stop';
+            document.querySelector('.play-alt').textContent = 'Stop';
             this.currentStep = 0; // Reset step counter when starting
             this.play();
         } else {
             document.querySelector('.play').textContent = 'Play';
+            document.querySelector('.play-alt').textContent = 'Play';
         }
     }
 
