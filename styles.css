@@ -144,6 +144,27 @@ button:hover {
 .pad.active-crash { background-color: var(--pad-crash); }
 .pad.active-ride { background-color: var(--pad-ride); }
 
+.pad.playing {
+    animation: padPulse 1.5s infinite;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.7);
+    z-index: 1;
+}
+
+@keyframes padPulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.7);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 30px rgba(255, 255, 255, 0.9);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.7);
+    }
+}
+
 @media (max-width: 768px) {
     body {
         align-items: flex-start;

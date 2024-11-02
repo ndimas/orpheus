@@ -23,8 +23,9 @@ class DrumMachine {
         this.grid = [];
         this.sounds = {};
         this.nextNoteTime = 0;
-        this.scheduleAheadTime = 0.1;
+        this.scheduleAheadTime = 0.2;
         this.lookahead = 25.0;
+        this.timerID = null;
         
         this.drumTypes = [
             'kick',
@@ -44,10 +45,11 @@ class DrumMachine {
 
         // Initialize audio context on user interaction
         document.addEventListener('click', () => {
-            if (this.audioContext.state === 'suspended') {
+            if (!this.audioContext || this.audioContext.state === 'suspended') {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 this.audioContext.resume();
             }
-        }, { once: true });
+        });
 
         // Pre-compile noise buffer
         this.noiseBuffer = this.createNoiseBuffer();
@@ -264,6 +266,29 @@ class DrumMachine {
 
         this.handleResize = this.handleResize.bind(this);
         window.addEventListener('resize', this.handleResize);
+
+        // Add Safari-specific setup
+        this.setupSafariAudioContext();
+    }
+
+    setupSafariAudioContext() {
+        const resumeAudioContext = () => {
+            if (this.audioContext.state === 'suspended') {
+                this.audioContext.resume();
+            }
+            // Create and play a silent buffer to unlock audio on iOS/Safari
+            const buffer = this.audioContext.createBuffer(1, 1, 22050);
+            const source = this.audioContext.createBufferSource();
+            source.buffer = buffer;
+            source.connect(this.audioContext.destination);
+            source.start(0);
+            
+            document.removeEventListener('touchstart', resumeAudioContext);
+            document.removeEventListener('click', resumeAudioContext);
+        };
+        
+        document.addEventListener('touchstart', resumeAudioContext);
+        document.addEventListener('click', resumeAudioContext);
     }
 
     handleResize() {
@@ -342,42 +367,36 @@ class DrumMachine {
 
             const setup = this.drumDefinitions[drumType].setup(this.audioContext);
             const startTime = time || this.audioContext.currentTime;
-            
-            // Connect to destination
-            if (setup.gain) {
-                setup.gain.connect(this.audioContext.destination);
-            }
 
-            // Start and stop sounds with precise timing
+            // Connect to destination
+            setup.gain.connect(this.audioContext.destination);
+
+            // Start oscillators and noise sources
             if (setup.osc) {
                 setup.osc.start(startTime);
-                setup.osc.stop(startTime + 0.5);
+                setup.osc.stop(startTime + 0.2);
             }
             if (setup.noise) {
                 setup.noise.start(startTime);
-                setup.noise.stop(startTime + 0.5);
+                setup.noise.stop(startTime + 0.2);
             }
-            
-            // Handle extra nodes for kick drum with precise timing
             if (setup.extraNodes) {
                 setup.extraNodes.forEach(node => {
                     if (node.osc) {
                         node.osc.start(startTime);
-                        node.osc.stop(startTime + 0.5);
+                        node.osc.stop(startTime + 0.2);
                     }
                 });
             }
 
-            // Clean up nodes
+            // Cleanup
+            const cleanupTime = (startTime - this.audioContext.currentTime + 0.3) * 1000;
             setTimeout(() => {
-                setup.gain?.disconnect();
-                setup.noiseGain?.disconnect();
+                setup.gain.disconnect();
                 if (setup.extraNodes) {
-                    setup.extraNodes.forEach(node => {
-                        node.gain?.disconnect();
-                    });
+                    setup.extraNodes.forEach(node => node.gain?.disconnect());
                 }
-            }, (startTime - this.audioContext.currentTime + 0.6) * 1000);
+            }, Math.max(0, cleanupTime));
 
         } catch (error) {
             console.error('Error playing drum sound:', error);
@@ -420,6 +439,11 @@ class DrumMachine {
             pad.classList.remove(activeClass);
         } else {
             pad.classList.add(activeClass);
+            // Add playing animation when clicking
+            pad.classList.add('playing');
+            setTimeout(() => {
+                pad.classList.remove('playing');
+            }, 100);
             this.playDrumSound(row);
         }
     }
@@ -437,10 +461,13 @@ class DrumMachine {
         if (this.isPlaying) {
             document.querySelector('.play').textContent = 'Stop';
             this.currentStep = 0;
-            this.nextNoteTime = this.audioContext.currentTime;
-            this.play();
+            this.play(); // Start playing immediately
         } else {
             document.querySelector('.play').textContent = 'Play';
+            if (this.timerID) {
+                clearTimeout(this.timerID);
+                this.timerID = null;
+            }
         }
     }
 
@@ -449,28 +476,34 @@ class DrumMachine {
 
         const secondsPerBeat = 60.0 / this.tempo;
         const secondsPerStep = secondsPerBeat / 4;
-        const scheduleAhead = document.hidden ? 2.0 : 0.1;
 
-        while (this.nextNoteTime < this.audioContext.currentTime + scheduleAhead) {
-            if (!document.hidden) {
-                document.querySelectorAll('.step-indicator').forEach((indicator, index) => {
-                    indicator.classList.toggle('active', index === this.currentStep);
-                });
+        // Update step indicators
+        document.querySelectorAll('.step-indicator').forEach((indicator, index) => {
+            indicator.classList.toggle('active', index === this.currentStep);
+        });
+
+        // Play active pads in current step
+        for (let row = 0; row < this.tracks; row++) {
+            const drumType = this.drumTypes[row];
+            const activeClass = `active-${drumType.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
+            const currentPad = this.grid[row][this.currentStep];
+            
+            if (currentPad.classList.contains(activeClass)) {
+                this.playDrumSound(row);
+                currentPad.classList.add('playing');
+                setTimeout(() => {
+                    currentPad.classList.remove('playing');
+                }, 100);
             }
-
-            for (let row = 0; row < this.tracks; row++) {
-                const activeClass = `active-${this.drumTypes[row].replace(/([A-Z])/g, '-$1').toLowerCase()}`;
-                if (this.grid[row][this.currentStep].classList.contains(activeClass)) {
-                    this.playDrumSound(row, this.nextNoteTime);
-                }
-            }
-
-            this.nextNoteTime += secondsPerStep;
-            this.currentStep = (this.currentStep + 1) % this.steps;
         }
 
-        const nextUpdateTime = document.hidden ? 1000 : 25;
-        this._timeoutId = setTimeout(() => this.play(), nextUpdateTime);
+        // Move to next step
+        this.currentStep = (this.currentStep + 1) % this.steps;
+
+        // Schedule next step
+        this.timerID = setTimeout(() => {
+            requestAnimationFrame(() => this.play());
+        }, secondsPerStep * 1000); // Convert to milliseconds
     }
 
     createNoiseBuffer() {
@@ -487,8 +520,8 @@ class DrumMachine {
     destroy() {
         document.removeEventListener('visibilitychange', this.handleVisibilityChange);
         window.removeEventListener('resize', this.handleResize);
-        if (this._timeoutId) {
-            clearTimeout(this._timeoutId);
+        if (this.timerID) {
+            clearTimeout(this.timerID);
         }
     }
 }

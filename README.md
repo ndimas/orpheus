@@ -1,73 +1,34 @@
-# Drum Machine Roadmap
+# Drum Machine
 
-## High Impact Features
-1. **Pattern Management** (2-3 days)
-   - Save/load patterns
-   - Multiple pattern support
-   - Pattern switching
-   - Import/export patterns
-   - Pattern number display
-   - Pattern copy/paste
+A web-based drum machine built with vanilla JavaScript and Web Audio API.
 
-2. **MIDI Support** (3-4 days)
-   - MIDI device connection
-   - MIDI input mapping
-   - MIDI clock sync
-   - MIDI output
-   - External control support
+## Roadmap
 
-3. **Recording Features** (2-3 days)
-   - Real-time recording
-   - Quantization
-   - Record arm per track
-   - Pattern overdub
-   - Undo/redo
+### Priority 1 - Critical Fixes
+- 🐛 Fix Safari/iOS audio playback issues
+  - Investigate Web Audio API initialization on Safari
+  - Test different approaches for audio unlocking
+  - Ensure consistent audio behavior across all iOS devices
 
-## Medium Impact Features
-4. **Grid View Options** (1-2 days)
-   - Toggle between different views
-   - Zoom levels
-   - Grid snap options
-   - Note length visualization
+### Priority 2 - Core Features
+- Add tempo control slider
+- Add volume control
+- Add pattern save/load functionality
+- Add keyboard shortcuts for common actions
 
-5. **Accent System** (1-2 days)
-   - Per-step velocity control
-   - Accent patterns
-   - Dynamic playback
-   - Groove templates
+### Priority 3 - Enhancements
+- Add more drum sounds
+- Add swing/groove control
+- Add pattern chaining
+- Add MIDI support
+- Add export to WAV functionality
 
-6. **Sound Management** (2-3 days)
-   - Sample import
-   - Sound editing
-   - Kit presets
-   - Sound mixing
-   - Per-track effects
+## Known Issues
+- Audio playback not working properly on Safari/iOS devices
+- Some timing inconsistencies at very high tempos
 
-## Nice to Have
-7. **Performance Features** (2-3 days)
-   - Swing control
-   - Tempo tap
-   - Performance mode
-   - Live remixing
-
-8. **UI Improvements** (1-2 days)
-   - Dark/light theme
-   - Custom color schemes
-   - Responsive improvements
-   - Touch gestures
-   - Keyboard shortcuts
-
-9. **Additional Tools** (2-3 days)
-   - Step probability
-   - Conditional triggers
-   - Parameter locks
-   - Automation
-
-## Currently Working Features
-- Basic sequencer functionality
-- Sound synthesis
-- Play/Stop
-- Mobile/desktop responsive design
-- Pattern reverse
-- Random pattern generation
-- Background tab playback 
+## Browser Support
+- ✅ Chrome
+- ✅ Firefox
+- ✅ Edge
+- ❌ Safari (WIP)
