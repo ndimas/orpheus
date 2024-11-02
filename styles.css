@@ -236,4 +236,63 @@ button:hover {
     .track-label {
         font-size: 10px;
     }
+}
+
+.tempo-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 20px;
+}
+
+.tempo-display {
+    min-width: 80px;
+    font-size: 14px;
+}
+
+.tempo-slider {
+    -webkit-appearance: none;
+    width: 150px;
+    height: 4px;
+    border-radius: 2px;
+    background: #444;
+    outline: none;
+    cursor: pointer;
+}
+
+.tempo-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--text-color);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tempo-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--text-color);
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+
+.tempo-slider::-webkit-slider-thumb:hover,
+.tempo-slider::-moz-range-thumb:hover {
+    transform: scale(1.1);
+    background: #fff;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+    .tempo-control {
+        padding: 0 10px;
+    }
+    
+    .tempo-slider {
+        width: 120px;
+    }
 } 

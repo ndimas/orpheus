@@ -4,14 +4,14 @@ A web-based drum machine built with vanilla JavaScript and Web Audio API.
 
 ## Roadmap
 
-### Priority 1 - Critical Fixes
-- 🐛 Fix Safari/iOS audio playback issues
-  - Investigate Web Audio API initialization on Safari
-  - Test different approaches for audio unlocking
-  - Ensure consistent audio behavior across all iOS devices
+### Priority 1 - Core Features
+- 🎯 Add tempo control (Next up!)
+  - Add visual tempo display (BPM)
+  - Add slider/input for tempo control (60-180 BPM)
+  - Ensure iOS/touch-friendly controls
+  - Add tap tempo functionality
 
-### Priority 2 - Core Features
-- Add tempo control slider
+### Priority 2 - Features
 - Add volume control
 - Add pattern save/load functionality
 - Add keyboard shortcuts for common actions
@@ -23,12 +23,11 @@ A web-based drum machine built with vanilla JavaScript and Web Audio API.
 - Add MIDI support
 - Add export to WAV functionality
 
-## Known Issues
-- Audio playback not working properly on Safari/iOS devices
-- Some timing inconsistencies at very high tempos
-
 ## Browser Support
 - ✅ Chrome
 - ✅ Firefox
 - ✅ Edge
-- ❌ Safari (WIP)
+- ✅ Safari
+
+## Known Issues
+- Some timing inconsistencies at very high tempos

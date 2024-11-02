@@ -269,6 +269,9 @@ class DrumMachine {
 
         // Add Safari-specific setup
         this.setupSafariAudioContext();
+
+        // Add tempo control setup
+        this.setupTempoControl();
     }
 
     setupSafariAudioContext() {
@@ -523,6 +526,20 @@ class DrumMachine {
         if (this.timerID) {
             clearTimeout(this.timerID);
         }
+    }
+
+    setupTempoControl() {
+        const slider = document.querySelector('.tempo-slider');
+        const display = document.querySelector('.tempo-display');
+
+        slider.addEventListener('input', (e) => {
+            this.tempo = parseInt(e.target.value);
+            display.textContent = `${this.tempo} BPM`;
+        });
+
+        // Initialize display
+        display.textContent = `${this.tempo} BPM`;
+        slider.value = this.tempo;
     }
 }
 
