@@ -276,6 +276,15 @@ class DrumMachine {
         this.isDragging = false;
         this.lastDraggedPad = null;
         this.dragStartState = false; // Whether we're adding or removing tiles
+
+        // Add version for future compatibility
+        this.version = '1.0.0';
+        
+        // Load saved settings
+        this.loadSavedSettings();
+        
+        // Auto-save when window closes
+        window.addEventListener('beforeunload', () => this.saveSettings());
     }
 
     setupSafariAudioContext() {
@@ -487,6 +496,24 @@ class DrumMachine {
 
     setupEventListeners() {
         document.querySelector('.play').addEventListener('click', () => this.togglePlay());
+        
+        // Add save/load buttons if they exist
+        const saveButton = document.querySelector('.save-pattern');
+        const loadButton = document.querySelector('.load-pattern');
+        
+        if (saveButton) {
+            saveButton.addEventListener('click', () => {
+                this.saveSettings();
+                alert('Pattern saved!');
+            });
+        }
+        
+        if (loadButton) {
+            loadButton.addEventListener('click', () => {
+                this.loadSavedSettings();
+                alert('Pattern loaded!');
+            });
+        }
     }
 
     togglePlay() {
@@ -569,11 +596,87 @@ class DrumMachine {
         slider.addEventListener('input', (e) => {
             this.tempo = parseInt(e.target.value);
             display.textContent = `${this.tempo} BPM`;
+            this.saveSettings(); // Save when tempo changes
         });
 
         // Initialize display
         display.textContent = `${this.tempo} BPM`;
         slider.value = this.tempo;
+    }
+
+    loadSavedSettings() {
+        try {
+            const saved = localStorage.getItem('drumMachineSettings');
+            if (saved) {
+                const settings = JSON.parse(saved);
+                
+                // Version check for future compatibility
+                if (settings.version === this.version) {
+                    // Load tempo
+                    if (settings.tempo) {
+                        this.tempo = settings.tempo;
+                    }
+
+                    // Load pattern
+                    if (settings.pattern) {
+                        this.loadPattern(settings.pattern);
+                    }
+                } else {
+                    // Handle version mismatch - could add migration logic here
+                    console.log('Settings version mismatch - using defaults');
+                }
+            }
+        } catch (error) {
+            console.error('Error loading settings:', error);
+        }
+    }
+
+    saveSettings() {
+        try {
+            const settings = {
+                version: this.version,
+                tempo: this.tempo,
+                pattern: this.savePattern()
+            };
+            localStorage.setItem('drumMachineSettings', JSON.stringify(settings));
+        } catch (error) {
+            console.error('Error saving settings:', error);
+        }
+    }
+
+    savePattern() {
+        // Save pattern with instrument names
+        return this.grid.map((row, rowIndex) => {
+            const instrumentName = this.drumTypes[rowIndex];
+            return {
+                instrument: instrumentName,
+                pattern: row.map(pad => {
+                    const activeClass = Array.from(pad.classList)
+                        .find(cls => cls.startsWith('active-'));
+                    return activeClass ? 1 : 0;
+                })
+            };
+        });
+    }
+
+    loadPattern(pattern) {
+        try {
+            pattern.forEach((track) => {
+                // Find the row index for this instrument
+                const rowIndex = this.drumTypes.indexOf(track.instrument);
+                if (rowIndex !== -1 && track.pattern.length === this.steps) {
+                    track.pattern.forEach((cell, colIndex) => {
+                        if (cell === 1) {
+                            const pad = this.grid[rowIndex][colIndex];
+                            const activeClass = `active-${track.instrument.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
+                            pad.classList.add(activeClass);
+                        }
+                    });
+                }
+            });
+        } catch (error) {
+            console.error('Error loading pattern:', error);
+        }
     }
 }
 
