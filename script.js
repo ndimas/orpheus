@@ -1,11 +1,25 @@
 class DrumMachine {
     constructor() {
+        this.config = {
+            desktop: {
+                steps: 16,
+                tempo: 120
+            },
+            mobile: {
+                steps: 8,
+                tempo: 120,
+                breakpoint: 768 // match with CSS media query
+            }
+        };
+
+        this.isMobile = window.innerWidth <= this.config.mobile.breakpoint;
+        this.steps = this.isMobile ? this.config.mobile.steps : this.config.desktop.steps;
+        
         this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
         this.tracks = 9;
-        this.steps = 16;
         this.currentStep = 0;
         this.isPlaying = false;
-        this.tempo = 120;
+        this.tempo = this.isMobile ? this.config.mobile.tempo : this.config.desktop.tempo;
         this.grid = [];
         this.sounds = {};
         this.nextNoteTime = 0;
@@ -46,19 +60,15 @@ class DrumMachine {
         this.drumDefinitions = {
             'kick': {
                 setup: (context) => {
-                    // Main sub oscillator
                     const osc = context.createOscillator();
                     const gain = context.createGain();
                     
-                    // Click/attack oscillator
                     const oscClick = context.createOscillator();
                     const gainClick = context.createGain();
                     
-                    // Body oscillator for mid frequencies
                     const oscBody = context.createOscillator();
                     const gainBody = context.createGain();
                     
-                    // Compressor for glue and punch
                     const compressor = context.createDynamicsCompressor();
                     compressor.threshold.setValueAtTime(-12, context.currentTime);
                     compressor.knee.setValueAtTime(6, context.currentTime);
@@ -81,19 +91,16 @@ class DrumMachine {
                     oscBody.frequency.setValueAtTime(120, context.currentTime);
                     oscBody.frequency.exponentialRampToValueAtTime(50, context.currentTime + 0.1);
                     
-                    // Main gain envelope (sub)
-                    gain.gain.setValueAtTime(2.0, context.currentTime);
+                    // Increased gain values for more consistent volume
+                    gain.gain.setValueAtTime(3.0, context.currentTime);          // Increased from 2.0
                     gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.4);
                     
-                    // Click gain envelope
-                    gainClick.gain.setValueAtTime(1.0, context.currentTime);
+                    gainClick.gain.setValueAtTime(1.5, context.currentTime);     // Increased from 1.0
                     gainClick.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.05);
                     
-                    // Body gain envelope
-                    gainBody.gain.setValueAtTime(1.0, context.currentTime);
+                    gainBody.gain.setValueAtTime(1.5, context.currentTime);      // Increased from 1.0
                     gainBody.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.2);
                     
-                    // Connect everything through the compressor
                     osc.connect(gain);
                     oscClick.connect(gainClick);
                     oscBody.connect(gainBody);
@@ -254,6 +261,53 @@ class DrumMachine {
                 }
             }
         };
+
+        this.handleResize = this.handleResize.bind(this);
+        window.addEventListener('resize', this.handleResize);
+    }
+
+    handleResize() {
+        const wasMobile = this.isMobile;
+        this.isMobile = window.innerWidth <= this.config.mobile.breakpoint;
+
+        if (wasMobile !== this.isMobile) {
+            this.steps = this.isMobile ? this.config.mobile.steps : this.config.desktop.steps;
+            this.rebuildGrid();
+        }
+    }
+
+    rebuildGrid() {
+        if (this.isPlaying) {
+            this.togglePlay();
+        }
+
+        const currentPattern = this.grid.map(row => 
+            row.map(pad => Array.from(pad.classList))
+        );
+
+        const gridContainer = document.querySelector('.grid-container');
+        gridContainer.innerHTML = '';
+        this.grid = [];
+
+        this.initializeGrid();
+
+        for (let row = 0; row < this.tracks; row++) {
+            for (let col = 0; col < this.steps; col++) {
+                const oldCol = Math.floor(col * (currentPattern[0].length / this.steps));
+                if (currentPattern[row] && currentPattern[row][oldCol]) {
+                    const classes = currentPattern[row][oldCol];
+                    classes.forEach(cls => {
+                        if (cls !== 'pad') {
+                            this.grid[row][col].classList.add(cls);
+                        }
+                    });
+                }
+            }
+        }
+
+        const indicatorContainer = document.querySelector('.step-indicators');
+        indicatorContainer.innerHTML = '';
+        this.createStepIndicators();
     }
 
     handleVisibilityChange() {
@@ -292,22 +346,9 @@ class DrumMachine {
             // Connect to destination
             if (setup.gain) {
                 setup.gain.connect(this.audioContext.destination);
-                
-                // Only set gain envelope if it's not the kick drum
-                if (drumType !== 'kick') {
-                    setup.gain.gain.cancelScheduledValues(startTime);
-                    setup.gain.gain.setValueAtTime(1, startTime);
-                    setup.gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.5);
-                }
-            }
-            if (setup.noiseGain) {
-                setup.noiseGain.connect(this.audioContext.destination);
-                setup.noiseGain.gain.cancelScheduledValues(startTime);
-                setup.noiseGain.gain.setValueAtTime(0.8, startTime);
-                setup.noiseGain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.5);
             }
 
-            // Start and stop sounds
+            // Start and stop sounds with precise timing
             if (setup.osc) {
                 setup.osc.start(startTime);
                 setup.osc.stop(startTime + 0.5);
@@ -317,7 +358,7 @@ class DrumMachine {
                 setup.noise.stop(startTime + 0.5);
             }
             
-            // Handle extra nodes (for kick drum)
+            // Handle extra nodes for kick drum with precise timing
             if (setup.extraNodes) {
                 setup.extraNodes.forEach(node => {
                     if (node.osc) {
@@ -345,6 +386,7 @@ class DrumMachine {
 
     initializeGrid() {
         const gridContainer = document.querySelector('.grid-container');
+        gridContainer.style.gridTemplateColumns = `repeat(${this.steps}, 40px)`;
         
         for (let row = 0; row < this.tracks; row++) {
             this.grid[row] = [];
@@ -384,8 +426,6 @@ class DrumMachine {
 
     setupEventListeners() {
         document.querySelector('.play').addEventListener('click', () => this.togglePlay());
-        document.querySelector('.play-alt').addEventListener('click', () => this.togglePlay());
-        document.querySelector('.loop').addEventListener('click', () => this.toggleLoop());
     }
 
     togglePlay() {
@@ -396,13 +436,11 @@ class DrumMachine {
         this.isPlaying = !this.isPlaying;
         if (this.isPlaying) {
             document.querySelector('.play').textContent = 'Stop';
-            document.querySelector('.play-alt').textContent = 'Stop';
             this.currentStep = 0;
             this.nextNoteTime = this.audioContext.currentTime;
             this.play();
         } else {
             document.querySelector('.play').textContent = 'Play';
-            document.querySelector('.play-alt').textContent = 'Play';
         }
     }
 
@@ -435,29 +473,6 @@ class DrumMachine {
         this._timeoutId = setTimeout(() => this.play(), nextUpdateTime);
     }
 
-    randomize() {
-        for (let row = 0; row < this.tracks; row++) {
-            for (let col = 0; col < this.steps; col++) {
-                const pad = this.grid[row][col];
-                pad.className = 'pad';
-                if (Math.random() > 0.8) {
-                    const activeClass = `active-${this.drumTypes[row].replace(/([A-Z])/g, '-$1').toLowerCase()}`;
-                    pad.classList.add(activeClass);
-                }
-            }
-        }
-    }
-
-    reverse() {
-        for (let row = 0; row < this.tracks; row++) {
-            const rowPads = [...this.grid[row]];
-            for (let col = 0; col < this.steps; col++) {
-                const classes = rowPads[col].className;
-                this.grid[row][this.steps - 1 - col].className = classes;
-            }
-        }
-    }
-
     createNoiseBuffer() {
         const bufferSize = this.audioContext.sampleRate * 0.5;
         const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
@@ -471,6 +486,7 @@ class DrumMachine {
     // Clean up when the drum machine is destroyed
     destroy() {
         document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+        window.removeEventListener('resize', this.handleResize);
         if (this._timeoutId) {
             clearTimeout(this._timeoutId);
         }
