@@ -281,10 +281,10 @@ class DrumMachine {
         this.version = '1.0.0';
         
         // Load saved settings
-        this.loadSavedSettings();
+        // this.loadSavedSettings();
         
         // Auto-save when window closes
-        window.addEventListener('beforeunload', () => this.saveSettings());
+        // window.addEventListener('beforeunload', () => this.saveSettings());
     }
 
     setupSafariAudioContext() {
@@ -497,23 +497,165 @@ class DrumMachine {
     setupEventListeners() {
         document.querySelector('.play').addEventListener('click', () => this.togglePlay());
         
-        // Add save/load buttons if they exist
+        // Add pattern control buttons
         const saveButton = document.querySelector('.save-pattern');
         const loadButton = document.querySelector('.load-pattern');
+        const clearButton = document.querySelector('.clear-pattern');
         
         if (saveButton) {
             saveButton.addEventListener('click', () => {
-                this.saveSettings();
-                alert('Pattern saved!');
+                const patternName = prompt('Name your pattern:', 'Pattern 1');
+                if (patternName) {
+                    this.savePattern(patternName);
+                    this.showToast(`Pattern "${patternName}" saved!`);
+                }
             });
         }
         
         if (loadButton) {
             loadButton.addEventListener('click', () => {
-                this.loadSavedSettings();
-                alert('Pattern loaded!');
+                const patterns = this.getStoredPatterns();
+                if (Object.keys(patterns).length === 0) {
+                    this.showToast('No saved patterns found', 'warning');
+                    return;
+                }
+                
+                const menu = this.createPatternMenu(patterns);
+                document.body.appendChild(menu);
             });
         }
+
+        if (clearButton) {
+            clearButton.addEventListener('click', () => {
+                if (confirm('Are you sure you want to clear the pattern?')) {
+                    this.clearPattern();
+                }
+            });
+        }
+    }
+
+    showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        // Animate in
+        setTimeout(() => toast.classList.add('show'), 10);
+        
+        // Remove after 2 seconds
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 2000);
+    }
+
+    createPatternMenu(patterns) {
+        const menu = document.createElement('div');
+        menu.className = 'pattern-menu';
+        
+        const title = document.createElement('h3');
+        title.textContent = 'Load Pattern';
+        menu.appendChild(title);
+        
+        Object.entries(patterns).forEach(([name, pattern]) => {
+            const row = document.createElement('div');
+            row.className = 'pattern-row';
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = name;
+            
+            const loadBtn = document.createElement('button');
+            loadBtn.textContent = 'Load';
+            loadBtn.onclick = () => {
+                this.loadPattern(pattern);
+                menu.remove();
+                this.showToast(`Pattern "${name}" loaded!`);
+            };
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = '×';
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation();
+                if (confirm(`Delete pattern "${name}"?`)) {
+                    this.deletePattern(name);
+                    row.remove();
+                    if (menu.querySelectorAll('.pattern-row').length === 0) {
+                        menu.remove();
+                    }
+                    this.showToast(`Pattern "${name}" deleted`);
+                }
+            };
+            
+            row.appendChild(nameSpan);
+            row.appendChild(loadBtn);
+            row.appendChild(deleteBtn);
+            menu.appendChild(row);
+        });
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = 'Close';
+        closeBtn.onclick = () => menu.remove();
+        menu.appendChild(closeBtn);
+        
+        return menu;
+    }
+
+    savePattern(name) {
+        const patterns = this.getStoredPatterns();
+        patterns[name] = {
+            version: this.version,
+            tempo: this.tempo,
+            pattern: this.grid.map((row, rowIndex) => {
+                const instrumentName = this.drumTypes[rowIndex];
+                return {
+                    instrument: instrumentName,
+                    pattern: row.map(pad => {
+                        const activeClass = Array.from(pad.classList)
+                            .find(cls => cls.startsWith('active-'));
+                        return activeClass ? 1 : 0;
+                    })
+                };
+            })
+        };
+        localStorage.setItem('drumMachinePatterns', JSON.stringify(patterns));
+    }
+
+    getStoredPatterns() {
+        try {
+            return JSON.parse(localStorage.getItem('drumMachinePatterns')) || {};
+        } catch {
+            return {};
+        }
+    }
+
+    deletePattern(name) {
+        const patterns = this.getStoredPatterns();
+        delete patterns[name];
+        localStorage.setItem('drumMachinePatterns', JSON.stringify(patterns));
+    }
+
+    clearPattern() {
+        // Clear all active pads
+        this.grid.forEach(row => {
+            row.forEach(pad => {
+                const classes = Array.from(pad.classList);
+                classes.forEach(className => {
+                    if (className.startsWith('active-')) {
+                        pad.classList.remove(className);
+                    }
+                });
+            });
+        });
+
+        // Clear step indicators
+        document.querySelectorAll('.step-indicator').forEach(indicator => {
+            indicator.classList.remove('active');
+        });
+        
+        // Reset current step
+        this.currentStep = 0;
     }
 
     togglePlay() {
@@ -596,7 +738,6 @@ class DrumMachine {
         slider.addEventListener('input', (e) => {
             this.tempo = parseInt(e.target.value);
             display.textContent = `${this.tempo} BPM`;
-            this.saveSettings(); // Save when tempo changes
         });
 
         // Initialize display
@@ -604,65 +745,19 @@ class DrumMachine {
         slider.value = this.tempo;
     }
 
-    loadSavedSettings() {
-        try {
-            const saved = localStorage.getItem('drumMachineSettings');
-            if (saved) {
-                const settings = JSON.parse(saved);
-                
-                // Version check for future compatibility
-                if (settings.version === this.version) {
-                    // Load tempo
-                    if (settings.tempo) {
-                        this.tempo = settings.tempo;
-                    }
-
-                    // Load pattern
-                    if (settings.pattern) {
-                        this.loadPattern(settings.pattern);
-                    }
-                } else {
-                    // Handle version mismatch - could add migration logic here
-                    console.log('Settings version mismatch - using defaults');
-                }
-            }
-        } catch (error) {
-            console.error('Error loading settings:', error);
-        }
-    }
-
-    saveSettings() {
-        try {
-            const settings = {
-                version: this.version,
-                tempo: this.tempo,
-                pattern: this.savePattern()
-            };
-            localStorage.setItem('drumMachineSettings', JSON.stringify(settings));
-        } catch (error) {
-            console.error('Error saving settings:', error);
-        }
-    }
-
-    savePattern() {
-        // Save pattern with instrument names
-        return this.grid.map((row, rowIndex) => {
-            const instrumentName = this.drumTypes[rowIndex];
-            return {
-                instrument: instrumentName,
-                pattern: row.map(pad => {
-                    const activeClass = Array.from(pad.classList)
-                        .find(cls => cls.startsWith('active-'));
-                    return activeClass ? 1 : 0;
-                })
-            };
-        });
-    }
-
     loadPattern(pattern) {
         try {
-            pattern.forEach((track) => {
-                // Find the row index for this instrument
+            // Clear existing pattern first
+            this.clearPattern();
+            
+            // Set tempo if it exists in the saved pattern
+            if (pattern.tempo) {
+                this.tempo = pattern.tempo;
+                this.setupTempoControl(); // Update the tempo display and slider
+            }
+
+            // Load the pattern
+            pattern.pattern.forEach((track) => {
                 const rowIndex = this.drumTypes.indexOf(track.instrument);
                 if (rowIndex !== -1 && track.pattern.length === this.steps) {
                     track.pattern.forEach((cell, colIndex) => {
@@ -676,6 +771,7 @@ class DrumMachine {
             });
         } catch (error) {
             console.error('Error loading pattern:', error);
+            this.showToast('Error loading pattern', 'warning');
         }
     }
 }

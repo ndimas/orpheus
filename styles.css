@@ -299,4 +299,84 @@ button:hover {
     .tempo-slider {
         width: 120px;
     }
-} 
+}
+
+.pattern-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* Add a subtle warning color for the clear button */
+.clear-pattern {
+    background-color: #444;
+    border: 1px solid #ff4136;
+}
+
+.clear-pattern:hover {
+    background-color: #ff4136;
+}
+
+/* Add to existing styles */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #333;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+.toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+.toast-success {
+    border-left: 4px solid #2ECC40;
+}
+
+.toast-warning {
+    border-left: 4px solid #FF851B;
+}
+
+.pattern-menu {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #222;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    min-width: 300px;
+}
+
+.pattern-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #333;
+}
+
+.pattern-row:hover {
+    background: #2a2a2a;
+}
+
+.delete-btn {
+    background: none;
+    border: none;
+    color: #ff4136;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0 8px;
+}
+
+.delete-btn:hover {
+    color: #ff725c;
+}
