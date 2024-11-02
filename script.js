@@ -40,7 +40,6 @@ class DrumMachine {
         ];
 
         this.initializeGrid();
-        this.createStepIndicators();
         this.setupEventListeners();
 
         // Initialize audio context on user interaction
@@ -313,13 +312,15 @@ class DrumMachine {
 
         if (wasMobile !== this.isMobile) {
             this.steps = this.isMobile ? this.config.mobile.steps : this.config.desktop.steps;
-            this.rebuildGrid();
+            this.rebuildGrid(true);
         }
     }
 
-    rebuildGrid() {
+    rebuildGrid(preservePattern = false) {
+        const wasPlaying = this.isPlaying;
+        
         if (this.isPlaying) {
-            this.togglePlay();
+            this.togglePlay(); // Stop temporarily
         }
 
         const currentPattern = this.grid.map(row => 
@@ -332,23 +333,26 @@ class DrumMachine {
 
         this.initializeGrid();
 
-        for (let row = 0; row < this.tracks; row++) {
-            for (let col = 0; col < this.steps; col++) {
-                const oldCol = Math.floor(col * (currentPattern[0].length / this.steps));
-                if (currentPattern[row] && currentPattern[row][oldCol]) {
-                    const classes = currentPattern[row][oldCol];
-                    classes.forEach(cls => {
-                        if (cls !== 'pad') {
-                            this.grid[row][col].classList.add(cls);
-                        }
-                    });
+        if (preservePattern) {
+            for (let row = 0; row < this.tracks; row++) {
+                for (let col = 0; col < this.steps; col++) {
+                    const oldCol = Math.floor(col * (currentPattern[0].length / this.steps));
+                    if (currentPattern[row] && currentPattern[row][oldCol]) {
+                        const classes = currentPattern[row][oldCol];
+                        classes.forEach(cls => {
+                            if (cls !== 'pad') {
+                                this.grid[row][col].classList.add(cls);
+                            }
+                        });
+                    }
                 }
             }
         }
 
-        const indicatorContainer = document.querySelector('.step-indicators');
-        indicatorContainer.innerHTML = '';
-        this.createStepIndicators();
+        // Resume playback if it was playing before
+        if (wasPlaying) {
+            this.togglePlay();
+        }
     }
 
     handleVisibilityChange() {
@@ -469,15 +473,6 @@ class DrumMachine {
         });
     }
 
-    createStepIndicators() {
-        const indicatorContainer = document.querySelector('.step-indicators');
-        for (let i = 0; i < this.steps; i++) {
-            const indicator = document.createElement('div');
-            indicator.className = 'step-indicator';
-            indicatorContainer.appendChild(indicator);
-        }
-    }
-
     togglePad(pad) {
         const row = parseInt(pad.dataset.row);
         const activeClass = `active-${this.drumTypes[row].replace(/([A-Z])/g, '-$1').toLowerCase()}`;
@@ -532,6 +527,44 @@ class DrumMachine {
                 }
             });
         }
+
+        // Add steps control
+        const decreaseBtn = document.querySelector('.decrease-steps');
+        const increaseBtn = document.querySelector('.increase-steps');
+        const stepsDisplay = document.querySelector('.steps-display');
+
+        if (decreaseBtn && increaseBtn) {
+            decreaseBtn.addEventListener('click', () => {
+                const minSteps = this.isMobile ? 4 : 4;
+                const increment = this.isMobile ? 2 : 4;
+                
+                if (this.steps > minSteps) {
+                    this.steps -= increment;
+                    stepsDisplay.textContent = `${this.steps} Steps`;
+                    this.rebuildGrid(true);
+                }
+            });
+
+            increaseBtn.addEventListener('click', () => {
+                const maxSteps = this.isMobile ? 16 : 32;
+                const increment = this.isMobile ? 2 : 4;
+                
+                if (this.steps < maxSteps) {
+                    this.steps += increment;
+                    stepsDisplay.textContent = `${this.steps} Steps`;
+                    this.rebuildGrid(true);
+                }
+            });
+        }
+
+        // Fix space bar control
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && !e.repeat && 
+                !(e.target.matches('input') || e.target.matches('textarea'))) {
+                e.preventDefault(); // Prevent page scroll
+                this.togglePlay();
+            }
+        });
     }
 
     showToast(message, type = 'success') {
@@ -683,11 +716,6 @@ class DrumMachine {
         const secondsPerBeat = 60.0 / this.tempo;
         const secondsPerStep = secondsPerBeat / 4;
 
-        // Update step indicators
-        document.querySelectorAll('.step-indicator').forEach((indicator, index) => {
-            indicator.classList.toggle('active', index === this.currentStep);
-        });
-
         // Play active pads in current step
         for (let row = 0; row < this.tracks; row++) {
             const drumType = this.drumTypes[row];
@@ -709,7 +737,7 @@ class DrumMachine {
         // Schedule next step
         this.timerID = setTimeout(() => {
             requestAnimationFrame(() => this.play());
-        }, secondsPerStep * 1000); // Convert to milliseconds
+        }, secondsPerStep * 1000);
     }
 
     createNoiseBuffer() {

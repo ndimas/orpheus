@@ -41,7 +41,8 @@ body {
 .controls-top {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
+    gap: 15px;
 }
 
 .view-controls {
@@ -64,42 +65,35 @@ button:hover {
 
 .sequencer {
     display: flex;
-    gap: 20px;
+    gap: 0;
     margin-bottom: 20px;
+    width: 100%;
+    overflow-x: hidden; /* Prevent horizontal scroll */
+    height: 60vh; /* Set a fixed height relative to viewport */
 }
 
 .track-labels {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-.track-label {
-    height: 40px;
-    display: flex;
-    align-items: center;
-    padding: 0 10px;
-    background-color: var(--button-bg);
-    border-radius: 4px;
+    display: none;
 }
 
 .grid-container {
     display: grid;
-    grid-template-columns: repeat(16, 1fr);
-    grid-template-rows: repeat(9, 40px);
-    gap: 5px;
+    gap: 3px; /* Tighter spacing between pads */
     flex-grow: 1;
-    user-select: none; /* Prevent text selection while dragging */
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
+    width: 100%;
+    min-width: 0;
+    height: 100%;
+    padding: 2px; /* Add slight padding around grid */
 }
 
 .pad {
+    aspect-ratio: 1;
+    width: 100%;
+    height: 100%;
     background-color: var(--button-bg);
     border-radius: 4px;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: all 0.2s;
 }
 
 .pad.active-blue {
@@ -112,30 +106,14 @@ button:hover {
 
 .controls-bottom {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    justify-content: flex-end;
+    padding: 10px 0 0 0;
 }
 
 .transport-controls, .playback-controls {
     display: flex;
     gap: 10px;
     align-items: center;
-}
-
-.step-indicators {
-    display: flex;
-    gap: 2px;
-}
-
-.step-indicator {
-    width: 8px;
-    height: 8px;
-    background-color: var(--button-bg);
-    border-radius: 50%;
-}
-
-.step-indicator.active {
-    background-color: #ff4136;
 }
 
 .pad.active-kick { background-color: var(--pad-kick); }
@@ -303,8 +281,7 @@ button:hover {
 
 .pattern-controls {
     display: flex;
-    gap: 10px;
-    align-items: center;
+    gap: 8px;
 }
 
 /* Add a subtle warning color for the clear button */
@@ -379,4 +356,356 @@ button:hover {
 
 .delete-btn:hover {
     color: #ff725c;
+}
+
+.steps-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+}
+
+.steps-display {
+    min-width: 80px;
+    text-align: center;
+    font-size: 14px;
+}
+
+.decrease-steps,
+.increase-steps {
+    padding: 4px 8px;
+    font-size: 16px;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+    .transport-controls {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .steps-control {
+        order: 2; /* Move steps control below tempo on mobile */
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Update mobile styles */
+@media (max-width: 768px) {
+    .drum-machine {
+        padding: 10px 5px;
+    }
+
+    /* Better control layout for mobile */
+    .controls-top {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .transport-controls {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        width: 100%;
+    }
+
+    /* Make play button full width */
+    .play {
+        grid-column: 1 / -1;
+        padding: 12px;
+        font-size: 16px;
+    }
+
+    /* Tempo control adjustments */
+    .tempo-control {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: auto 1fr;
+        align-items: center;
+        gap: 15px;
+        padding: 0;
+    }
+
+    .tempo-slider {
+        width: 100%;
+        height: 20px; /* Bigger touch target */
+    }
+
+    .tempo-slider::-webkit-slider-thumb {
+        width: 24px; /* Bigger touch target */
+        height: 24px;
+    }
+
+    .tempo-slider::-moz-range-thumb {
+        width: 24px; /* Bigger touch target */
+        height: 24px;
+    }
+
+    /* Steps control adjustments */
+    .steps-control {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 15px;
+        padding: 0;
+    }
+
+    .decrease-steps,
+    .increase-steps {
+        padding: 12px 20px; /* Bigger touch target */
+        font-size: 18px;
+    }
+
+    /* Pattern controls adjustments */
+    .pattern-controls {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+    }
+
+    .pattern-controls button {
+        padding: 12px; /* Bigger touch target */
+    }
+
+    /* Grid adjustments */
+    .grid-container {
+        gap: 4px;
+    }
+
+    .pad {
+        min-width: 35px;
+        min-height: 35px;
+        touch-action: none; /* Prevent scrolling while dragging */
+    }
+
+    /* Track labels adjustments */
+    .track-label {
+        padding: 0 12px;
+        min-width: 100px;
+        font-size: 12px;
+    }
+
+    /* Toast adjustments for mobile */
+    .toast {
+        width: 90%;
+        max-width: none;
+        bottom: 10px;
+    }
+
+    /* Pattern menu adjustments for mobile */
+    .pattern-menu {
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+}
+
+/* Extra small devices */
+@media (max-width: 380px) {
+    .track-label {
+        min-width: 80px;
+        font-size: 11px;
+    }
+
+    .pad {
+        min-width: 32px;
+        min-height: 32px;
+    }
+}
+
+/* Update grid and pad styles */
+.sequencer {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+    width: 100%;
+    overflow-x: hidden; /* Prevent horizontal scroll */
+}
+
+.grid-container {
+    display: grid;
+    gap: 5px;
+    flex-grow: 1;
+    width: 100%;
+    min-width: 0; /* Allow grid to shrink */
+}
+
+.pad {
+    aspect-ratio: 1; /* Keep pads square */
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    background-color: var(--button-bg);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+    .sequencer {
+        gap: 10px;
+    }
+
+    .grid-container {
+        gap: 3px;
+    }
+
+    .track-labels {
+        min-width: 80px; /* Smaller fixed width for labels */
+    }
+
+    .track-label {
+        font-size: 11px;
+        padding: 0 5px;
+        min-width: 80px;
+    }
+
+    /* Remove fixed sizes for pads */
+    .pad {
+        min-width: unset;
+        min-height: unset;
+    }
+}
+
+/* Update track label styles */
+.track-labels {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 100px; /* Base width for labels */
+}
+
+.track-label {
+    aspect-ratio: 3/1; /* Make labels scale with height but stay readable */
+    width: 100%;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    background-color: var(--button-bg);
+    border-radius: 4px;
+    font-size: clamp(11px, 2vw, 14px); /* Responsive font size */
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+    .track-labels {
+        min-width: 80px;
+        gap: 3px;
+    }
+
+    .track-label {
+        padding: 0 5px;
+        font-size: clamp(10px, 1.5vw, 12px);
+    }
+}
+
+/* Extra small devices */
+@media (max-width: 380px) {
+    .track-labels {
+        min-width: 70px;
+    }
+
+    .track-label {
+        font-size: clamp(9px, 1.2vw, 11px);
+    }
+}
+
+.feedback-link {
+    color: var(--text-color);
+    opacity: 0.6;
+    text-decoration: none;
+    font-size: 12px;
+    padding: 8px;
+    transition: opacity 0.2s;
+}
+
+.feedback-link:hover {
+    opacity: 1;
+}
+
+.controls-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 10px;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+    .step-indicators {
+        gap: 3px;
+    }
+
+    .step-indicator {
+        height: 6px;
+    }
+}
+
+/* Update grid spacing */
+.grid-container {
+    display: grid;
+    gap: 3px; /* Tighter spacing between pads */
+    flex-grow: 1;
+    width: 100%;
+    min-width: 0;
+    height: 100%;
+    padding: 2px; /* Add slight padding around grid */
+}
+
+/* Hide track labels */
+.track-labels {
+    display: none;
+}
+
+/* Improve controls spacing */
+.controls-top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    gap: 15px;
+}
+
+.transport-controls {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    gap: 15px;
+    width: 100%;
+    align-items: center;
+}
+
+/* Adjust pattern controls spacing */
+.pattern-controls {
+    display: flex;
+    gap: 8px;
+}
+
+/* Keep feedback button on the right */
+.controls-bottom {
+    display: flex;
+    justify-content: flex-end;
+    padding: 10px 0 0 0;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+    .transport-controls {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .pattern-controls {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .grid-container {
+        gap: 2px; /* Even tighter spacing on mobile */
+    }
+
+    .drum-machine {
+        padding: 10px;
+    }
 }
