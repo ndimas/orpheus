@@ -272,6 +272,10 @@ class DrumMachine {
 
         // Add tempo control setup
         this.setupTempoControl();
+
+        this.isDragging = false;
+        this.lastDraggedPad = null;
+        this.dragStartState = false; // Whether we're adding or removing tiles
     }
 
     setupSafariAudioContext() {
@@ -418,11 +422,42 @@ class DrumMachine {
                 pad.dataset.row = row;
                 pad.dataset.col = col;
                 
-                pad.addEventListener('click', () => this.togglePad(pad));
+                pad.addEventListener('mousedown', (e) => {
+                    e.preventDefault(); // Prevent text selection while dragging
+                    this.isDragging = true;
+                    const activeClass = `active-${this.drumTypes[row].replace(/([A-Z])/g, '-$1').toLowerCase()}`;
+                    this.dragStartState = !pad.classList.contains(activeClass);
+                    this.togglePad(pad);
+                });
+
+                pad.addEventListener('mouseover', () => {
+                    if (this.isDragging && pad !== this.lastDraggedPad) {
+                        this.lastDraggedPad = pad;
+                        const activeClass = `active-${this.drumTypes[row].replace(/([A-Z])/g, '-$1').toLowerCase()}`;
+                        
+                        // Match the drag start state
+                        if (this.dragStartState && !pad.classList.contains(activeClass)) {
+                            this.togglePad(pad);
+                        } else if (!this.dragStartState && pad.classList.contains(activeClass)) {
+                            this.togglePad(pad);
+                        }
+                    }
+                });
+
                 gridContainer.appendChild(pad);
                 this.grid[row][col] = pad;
             }
         }
+
+        gridContainer.addEventListener('mouseup', () => {
+            this.isDragging = false;
+            this.lastDraggedPad = null;
+        });
+
+        gridContainer.addEventListener('mouseleave', () => {
+            this.isDragging = false;
+            this.lastDraggedPad = null;
+        });
     }
 
     createStepIndicators() {
@@ -442,7 +477,6 @@ class DrumMachine {
             pad.classList.remove(activeClass);
         } else {
             pad.classList.add(activeClass);
-            // Add playing animation when clicking
             pad.classList.add('playing');
             setTimeout(() => {
                 pad.classList.remove('playing');

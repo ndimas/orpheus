@@ -89,6 +89,10 @@ button:hover {
     grid-template-rows: repeat(9, 40px);
     gap: 5px;
     flex-grow: 1;
+    user-select: none; /* Prevent text selection while dragging */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
 }
 
 .pad {
