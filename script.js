@@ -753,17 +753,27 @@ class DrumMachine {
     }
 
     loadKickSample() {
+        console.log('Starting kick sample load...');
         fetch('assets/samples/tr909-kick-drum.mp3')
             .then(response => {
+                console.log('Fetch response status:', response.status);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 return response.arrayBuffer();
             })
-            .then(arrayBuffer => this.audioContext.decodeAudioData(arrayBuffer))
+            .then(arrayBuffer => {
+                console.log('ArrayBuffer received, size:', arrayBuffer.byteLength);
+                return this.audioContext.decodeAudioData(arrayBuffer);
+            })
             .then(audioBuffer => {
+                console.log('Audio buffer decoded successfully:', {
+                    duration: audioBuffer.duration,
+                    numberOfChannels: audioBuffer.numberOfChannels,
+                    sampleRate: audioBuffer.sampleRate
+                });
                 this.kickBuffer = audioBuffer;
-                console.log('Kick sample loaded successfully');
+                this.showToast('Kick sample loaded successfully', 'success');
             })
             .catch(error => {
                 console.error('Error loading kick sample:', error);
