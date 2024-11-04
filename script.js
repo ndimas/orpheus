@@ -761,8 +761,9 @@ class DrumMachine {
             })
             .catch(error => console.error('Error loading kick sample:', error));
     }
+}
 
 // Initialize the drum machine when the page loads
 document.addEventListener('DOMContentLoaded', () => {
     const drumMachine = new DrumMachine();
-}); 
+});
