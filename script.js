@@ -751,7 +751,6 @@ class DrumMachine {
             this.showToast('Error loading pattern', 'warning');
         }
     }
-    }
 
     loadKickSample() {
         fetch('assets/samples/tr909-kick-drum.mp3')
