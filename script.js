@@ -754,7 +754,7 @@ class DrumMachine {
 
     loadKickSample() {
         console.log('Starting kick sample load...');
-        fetch('assets/samples/tr909-kick-drum.mp3')
+        fetch('https://orpheus.sh/assets/samples/tr909-kick-drum.mp3')
             .then(response => {
                 console.log('Fetch response status:', response.status);
                 if (!response.ok) {
