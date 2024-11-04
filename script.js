@@ -39,6 +39,7 @@ class DrumMachine {
             'ride'
         ];
 
+        this.loadKickSample();
         this.initializeGrid();
         this.setupEventListeners();
 
@@ -58,68 +59,8 @@ class DrumMachine {
         document.addEventListener('visibilitychange', this.handleVisibilityChange);
 
         // Add drum definitions
+        this.kickBuffer = null;
         this.drumDefinitions = {
-            'kick': {
-                setup: (context) => {
-                    const osc = context.createOscillator();
-                    const gain = context.createGain();
-                    
-                    const oscClick = context.createOscillator();
-                    const gainClick = context.createGain();
-                    
-                    const oscBody = context.createOscillator();
-                    const gainBody = context.createGain();
-                    
-                    const compressor = context.createDynamicsCompressor();
-                    compressor.threshold.setValueAtTime(-12, context.currentTime);
-                    compressor.knee.setValueAtTime(6, context.currentTime);
-                    compressor.ratio.setValueAtTime(4, context.currentTime);
-                    compressor.attack.setValueAtTime(0.001, context.currentTime);
-                    compressor.release.setValueAtTime(0.1, context.currentTime);
-                    
-                    // Main sub frequencies
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(60, context.currentTime);
-                    osc.frequency.exponentialRampToValueAtTime(30, context.currentTime + 0.2);
-                    
-                    // Click for attack
-                    oscClick.type = 'triangle';
-                    oscClick.frequency.setValueAtTime(200, context.currentTime);
-                    oscClick.frequency.exponentialRampToValueAtTime(40, context.currentTime + 0.02);
-                    
-                    // Body tone
-                    oscBody.type = 'sine';
-                    oscBody.frequency.setValueAtTime(120, context.currentTime);
-                    oscBody.frequency.exponentialRampToValueAtTime(50, context.currentTime + 0.1);
-                    
-                    // Increased gain values for more consistent volume
-                    gain.gain.setValueAtTime(3.0, context.currentTime);          // Increased from 2.0
-                    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.4);
-                    
-                    gainClick.gain.setValueAtTime(1.5, context.currentTime);     // Increased from 1.0
-                    gainClick.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.05);
-                    
-                    gainBody.gain.setValueAtTime(1.5, context.currentTime);      // Increased from 1.0
-                    gainBody.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.2);
-                    
-                    osc.connect(gain);
-                    oscClick.connect(gainClick);
-                    oscBody.connect(gainBody);
-                    
-                    gain.connect(compressor);
-                    gainClick.connect(compressor);
-                    gainBody.connect(compressor);
-                    
-                    return { 
-                        osc: osc, 
-                        gain: compressor,
-                        extraNodes: [
-                            { osc: oscClick, gain: gainClick },
-                            { osc: oscBody, gain: gainBody }
-                        ]
-                    };
-                }
-            },
             'snare': {
                 setup: (context) => {
                     const noise = context.createBufferSource();
@@ -381,45 +322,53 @@ class DrumMachine {
     }
 
     playDrumSound(row, time = null) {
-        try {
-            const drumType = this.drumTypes[row];
-            if (!drumType || !this.drumDefinitions[drumType]) return;
+        const drumType = this.drumTypes[row];
+        const startTime = time || this.audioContext.currentTime;
 
-            const setup = this.drumDefinitions[drumType].setup(this.audioContext);
-            const startTime = time || this.audioContext.currentTime;
+        if (drumType === 'kick' && this.kickBuffer) {
+            const source = this.audioContext.createBufferSource();
+            source.buffer = this.kickBuffer;
+            source.connect(this.audioContext.destination);
+            source.start(startTime);
+        } else {
+            try {
+                if (!drumType || !this.drumDefinitions[drumType]) return;
 
-            // Connect to destination
-            setup.gain.connect(this.audioContext.destination);
+                const setup = this.drumDefinitions[drumType].setup(this.audioContext);
 
-            // Start oscillators and noise sources
-            if (setup.osc) {
-                setup.osc.start(startTime);
-                setup.osc.stop(startTime + 0.2);
-            }
-            if (setup.noise) {
-                setup.noise.start(startTime);
-                setup.noise.stop(startTime + 0.2);
-            }
-            if (setup.extraNodes) {
-                setup.extraNodes.forEach(node => {
-                    if (node.osc) {
-                        node.osc.start(startTime);
-                        node.osc.stop(startTime + 0.2);
-                    }
-                });
-            }
+                // Connect to destination
+                setup.gain.connect(this.audioContext.destination);
 
-            // Cleanup
-            const cleanupTime = (startTime - this.audioContext.currentTime + 0.3) * 1000;
-            setTimeout(() => {
-                setup.gain.disconnect();
-                if (setup.extraNodes) {
-                    setup.extraNodes.forEach(node => node.gain?.disconnect());
+                // Start oscillators and noise sources
+                if (setup.osc) {
+                    setup.osc.start(startTime);
+                    setup.osc.stop(startTime + 0.2);
                 }
-            }, Math.max(0, cleanupTime));
+                if (setup.noise) {
+                    setup.noise.start(startTime);
+                    setup.noise.stop(startTime + 0.2);
+                }
+                if (setup.extraNodes) {
+                    setup.extraNodes.forEach(node => {
+                        if (node.osc) {
+                            node.osc.start(startTime);
+                            node.osc.stop(startTime + 0.2);
+                        }
+                    });
+                }
 
-        } catch (error) {
-            console.error('Error playing drum sound:', error);
+                // Cleanup
+                const cleanupTime = (startTime - this.audioContext.currentTime + 0.3) * 1000;
+                setTimeout(() => {
+                    setup.gain.disconnect();
+                    if (setup.extraNodes) {
+                        setup.extraNodes.forEach(node => node.gain?.disconnect());
+                    }
+                }, Math.max(0, cleanupTime));
+
+            } catch (error) {
+                console.error('Error playing drum sound:', error);
+            }
         }
     }
 
@@ -802,7 +751,17 @@ class DrumMachine {
             this.showToast('Error loading pattern', 'warning');
         }
     }
-}
+    }
+
+    loadKickSample() {
+        fetch('assets/samples/tr909-kick-drum.mp3')
+            .then(response => response.arrayBuffer())
+            .then(arrayBuffer => this.audioContext.decodeAudioData(arrayBuffer))
+            .then(audioBuffer => {
+                this.kickBuffer = audioBuffer;
+            })
+            .catch(error => console.error('Error loading kick sample:', error));
+    }
 
 // Initialize the drum machine when the page loads
 document.addEventListener('DOMContentLoaded', () => {
